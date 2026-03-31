@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>New Starter Details — Kinfold Inns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --gold:    #B9924E;
+  --gold-lt: #D4AB6A;
+  --dark:    #3B3632;
+  --dark2:   #2A2420;
+  --cream:   #F8F4EE;
+  --warm:    #EDE7DE;
+  --border:  #DDD5C8;
+  --muted:   #8C7E74;
+  --white:   #FFFFFF;
+  --error:   #C0392B;
+  --success: #2D6A4F;
+  --radius:  12px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Jost', sans-serif;
+  background: var(--cream);
+  color: var(--dark);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── HERO ── */
+.hero {
+  background: var(--dark2);
+  padding: 36px 24px 32px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 120%, rgba(185,146,78,0.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-ornament {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 18px;
+  opacity: 0.5;
+}
+
+.orn-line    { width: 40px; height: 1px; background: var(--gold); }
+.orn-diamond { width: 6px; height: 6px; background: var(--gold); transform: rotate(45deg); }
+
+.hero-wordmark {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gold);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.hero-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(30px, 8vw, 42px);
+  font-weight: 400;
+  color: var(--white);
+  line-height: 1.15;
+  margin-bottom: 16px;
+}
+
+.hero-title em { font-style: italic; color: var(--gold-lt); }
+
+/* Venue banner — prominent */
+.venue-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(185,146,78,0.15);
+  border: 1px solid rgba(185,146,78,0.35);
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gold-lt);
+  letter-spacing: 0.3px;
+}
+
+.venue-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex-shrink: 0;
+}
+
+/* ── PROGRESS ── */
+.progress-wrap {
+  background: var(--dark);
+  padding: 13px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.progress-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  position: relative;
+}
+
+.progress-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: calc(50% + 12px);
+  right: calc(-50% + 12px);
+  height: 1px;
+  background: rgba(255,255,255,0.12);
+  transition: background 0.4s;
+}
+
+.progress-step.done:not(:last-child)::after { background: var(--gold); }
+
+.step-circle {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600;
+  color: rgba(255,255,255,0.25);
+  transition: all 0.3s;
+  z-index: 1;
+}
+
+.progress-step.done   .step-circle { background: var(--gold); border-color: var(--gold); color: white; }
+.progress-step.active .step-circle { border-color: var(--gold); color: var(--gold); }
+
+.step-label {
+  font-size: 9px; font-weight: 500;
+  color: rgba(255,255,255,0.2);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: color 0.3s;
+}
+
+.progress-step.active .step-label,
+.progress-step.done   .step-label { color: rgba(255,255,255,0.55); }
+
+/* ── FORM WRAP ── */
+.form-wrap {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 28px 18px 60px;
+}
+
+/* ── SECTION ── */
+.section {
+  background: var(--white);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 18px;
+  animation: fadeUp 0.4s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.section:nth-child(2) { animation-delay: 0.04s; }
+.section:nth-child(3) { animation-delay: 0.08s; }
+.section:nth-child(4) { animation-delay: 0.12s; }
+.section:nth-child(5) { animation-delay: 0.16s; }
+
+.section-head {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--warm);
+  display: flex; align-items: center; gap: 12px;
+}
+
+.section-icon {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  background: var(--cream);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+
+.section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px; font-weight: 500;
+  color: var(--dark); line-height: 1.2;
+}
+
+.section-subtitle { font-size: 12px; color: var(--muted); margin-top: 1px; font-weight: 300; }
+
+.section-body { padding: 18px 20px; }
+
+/* ── FIELDS ── */
+.field       { margin-bottom: 16px; }
+.field:last-child { margin-bottom: 0; }
+
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+label {
+  display: block;
+  font-size: 11px; font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.8px;
+  margin-bottom: 6px;
+}
+
+label .req { color: var(--gold); margin-left: 2px; }
+label .opt { font-weight: 400; color: #ccc; font-size: 10px; text-transform: none; letter-spacing: 0; margin-left: 4px; }
+
+input[type=text], input[type=email], input[type=tel], input[type=date], select {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: 'Jost', sans-serif;
+  font-weight: 400;
+  color: var(--dark);
+  background: var(--white);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input:focus, select:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(185,146,78,0.1);
+}
+
+input.prefilled {
+  background: var(--cream);
+  border-color: var(--warm);
+}
+
+input.has-error, select.has-error { border-color: var(--error) !important; }
+
+.field-hint  { font-size: 11px; color: var(--muted); margin-top: 5px; font-weight: 300; }
+.field-error { font-size: 11px; color: var(--error); margin-top: 5px; display: none; }
+.field-error.show { display: block; }
+
+.prefill-notice {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 500; color: var(--gold);
+  background: rgba(185,146,78,0.07);
+  border: 1px solid rgba(185,146,78,0.2);
+  border-radius: 20px; padding: 3px 10px;
+  margin-bottom: 14px;
+}
+
+.select-wrap { position: relative; }
+.select-wrap::after {
+  content: '▾'; position: absolute;
+  right: 14px; top: 50%; transform: translateY(-50%);
+  color: var(--muted); pointer-events: none; font-size: 12px;
+}
+
+/* ── DECLARATION ── */
+.radio-group { display: flex; flex-direction: column; gap: 10px; }
+
+.radio-option {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--white);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.radio-option:hover     { border-color: var(--gold); background: #fdf9f4; }
+.radio-option.selected  { border-color: var(--gold); background: rgba(185,146,78,0.05); }
+
+.radio-option input { display: none; }
+
+.radio-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  flex-shrink: 0; margin-top: 2px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+
+.radio-option.selected .radio-dot {
+  border-color: var(--gold); background: var(--gold);
+}
+
+.radio-option.selected .radio-dot::after {
+  content: ''; width: 6px; height: 6px;
+  border-radius: 50%; background: white;
+}
+
+.radio-letter {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px; font-weight: 600;
+  color: var(--gold); line-height: 1;
+  flex-shrink: 0; min-width: 16px;
+}
+
+.radio-text strong { display: block; font-size: 13px; font-weight: 600; color: var(--dark); margin-bottom: 2px; }
+.radio-text p { font-size: 12px; color: var(--muted); font-weight: 300; line-height: 1.4; }
+
+/* ── SUBMIT ── */
+.submit-btn {
+  width: 100%;
+  padding: 16px;
+  background: var(--gold); color: white;
+  border: none; border-radius: var(--radius);
+  font-family: 'Jost', sans-serif;
+  font-size: 15px; font-weight: 600; letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: #a07d3e;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(185,146,78,0.35);
+}
+
+.submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.submit-btn.loading .btn-text { display: none; }
+.submit-btn.loading .btn-spin { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.btn-spin { display: none; }
+
+.spin-ring {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.submit-note { text-align: center; font-size: 12px; color: var(--muted); margin-top: 10px; font-weight: 300; }
+
+/* ── ERROR BANNER ── */
+.error-banner {
+  display: none;
+  background: #fef2f2; border: 1px solid #fecaca;
+  border-radius: 10px; padding: 14px 18px;
+  margin-bottom: 18px;
+  font-size: 13px; color: var(--error); font-weight: 500;
+}
+
+.error-banner.show { display: block; }
+
+/* ── STATES ── */
+.loading-screen {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 60vh; gap: 14px;
+}
+
+.spinner {
+  width: 38px; height: 38px;
+  border: 3px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-screen p { font-size: 14px; color: var(--muted); font-weight: 300; }
+
+.success-screen {
+  display: none;
+  text-align: center; padding: 60px 24px;
+  animation: fadeUp 0.5s ease;
+}
+
+.success-screen.show { display: block; }
+
+.success-icon {
+  width: 70px; height: 70px;
+  border-radius: 50%;
+  background: rgba(45,106,79,0.1);
+  border: 2px solid rgba(45,106,79,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px;
+  margin: 0 auto 22px;
+}
+
+.success-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 34px; font-weight: 500;
+  color: var(--dark); margin-bottom: 12px;
+}
+
+.success-body { font-size: 15px; color: var(--muted); font-weight: 300; line-height: 1.65; max-width: 340px; margin: 0 auto; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 480px) {
+  .field-row { grid-template-columns: 1fr; }
+  .section-body { padding: 16px; }
+  .section-head { padding: 14px 16px 12px; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <img src="data:image/png;base64,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" alt="Kinfold Inns" style="height:70px;max-width:220px;object-fit:contain;margin-bottom:12px;">
+  <h1 class="hero-title">Welcome to<br>the <em>team</em></h1>
+  <div class="venue-banner" id="venueBanner">
+    <span class="venue-dot"></span>
+    <span id="venueLabel">Loading…</span>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div class="progress-wrap">
+  <div class="progress-steps">
+    <div class="progress-step active" id="s1"><div class="step-circle">1</div><div class="step-label">Your Details</div></div>
+    <div class="progress-step"        id="s2"><div class="step-circle">2</div><div class="step-label">Address</div></div>
+    <div class="progress-step"        id="s3"><div class="step-circle">3</div><div class="step-label">Payroll</div></div>
+    <div class="progress-step"        id="s4"><div class="step-circle">4</div><div class="step-label">Bank</div></div>
+  </div>
+</div>
+
+<!-- FORM WRAP -->
+<div class="form-wrap">
+
+  <!-- Loading -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="spinner"></div>
+    <p>Preparing your form…</p>
+  </div>
+
+  <!-- Success -->
+  <div class="success-screen" id="successScreen">
+    <div class="success-icon">✓</div>
+    <div class="success-title">All done!</div>
+    <p class="success-body">
+      Thank you for completing your details. We'll get you set up on payroll straight away.<br><br>
+      Keep an eye on Connecteam — we'll be in touch shortly with your contract and a guide to getting started.
+    </p>
+  </div>
+
+  <!-- Form -->
+  <div id="formContent" style="display:none">
+
+    <div class="error-banner" id="errorBanner"></div>
+
+    <!-- SECTION 1: YOUR DETAILS -->
+    <div class="section">
+      <div class="section-head">
+        <div class="section-icon">👤</div>
+        <div>
+          <div class="section-title">Your Details</div>
+          <div class="section-subtitle">Check these are correct and fill in anything missing</div>
+        </div>
+      </div>
+      <div class="section-body">
+
+        <div id="prefillNotice" class="prefill-notice" style="display:none">✦ Some fields have been pre-filled for you</div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>First Name <span class="req">*</span></label>
+            <input type="text" id="firstName" placeholder="First name">
+            <div class="field-error" id="err-firstName">Please enter your first name</div>
+          </div>
+          <div class="field">
+            <label>Last Name <span class="req">*</span></label>
+            <input type="text" id="lastName" placeholder="Last name">
+            <div class="field-error" id="err-lastName">Please enter your last name</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Personal Email <span class="req">*</span></label>
+          <input type="email" id="email" placeholder="your@email.com">
+          <div class="field-hint">This is where your payslips will be sent</div>
+          <div class="field-error" id="err-email">Please enter a valid email address</div>
+        </div>
+
+        <div class="field">
+          <label>Mobile Number <span class="req">*</span></label>
+          <input type="tel" id="phone" placeholder="+44 7700 000000">
+          <div class="field-error" id="err-phone">Please enter your mobile number</div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Date of Birth <span class="req">*</span></label>
+            <input type="date" id="dob">
+            <div class="field-error" id="err-dob">Please enter your date of birth</div>
+          </div>
+          <div class="field">
+            <label>Gender <span class="opt">optional</span></label>
+            <div class="select-wrap">
+              <select id="gender">
+                <option value="">Prefer not to say</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SECTION 2: ADDRESS -->
+    <div class="section">
+      <div class="section-head">
+        <div class="section-icon">🏡</div>
+        <div>
+          <div class="section-title">Home Address</div>
+          <div class="section-subtitle">Required for your employment records</div>
+        </div>
+      </div>
+      <div class="section-body">
+
+        <div class="field">
+          <label>Address Line 1 <span class="req">*</span></label>
+          <input type="text" id="address1" placeholder="House number and street">
+          <div class="field-error" id="err-address1">Please enter your address</div>
+        </div>
+
+        <div class="field">
+          <label>Address Line 2 <span class="opt">optional</span></label>
+          <input type="text" id="address2" placeholder="Village, area (if applicable)">
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Town / City <span class="req">*</span></label>
+            <input type="text" id="city" placeholder="e.g. Brighton">
+            <div class="field-error" id="err-city">Please enter your town or city</div>
+          </div>
+          <div class="field">
+            <label>Postcode <span class="req">*</span></label>
+            <input type="text" id="postcode" placeholder="e.g. BN1 1AA" oninput="this.value=this.value.toUpperCase()">
+            <div class="field-error" id="err-postcode">Please enter your postcode</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SECTION 3: PAYROLL -->
+    <div class="section">
+      <div class="section-head">
+        <div class="section-icon">📋</div>
+        <div>
+          <div class="section-title">Payroll Details</div>
+          <div class="section-subtitle">Needed to register you on our payroll system</div>
+        </div>
+      </div>
+      <div class="section-body">
+
+        <div class="field">
+          <label>National Insurance Number <span class="req">*</span></label>
+          <input type="text" id="niNumber" placeholder="e.g. AB 12 34 56 C" maxlength="13" oninput="this.value=this.value.toUpperCase()">
+          <div class="field-hint">Found on your NI card, payslip, or HMRC letters</div>
+          <div class="field-error" id="err-niNumber">Please enter your NI number</div>
+        </div>
+
+        <div class="field">
+          <label>Start Date <span class="req">*</span></label>
+          <input type="date" id="startDate">
+          <div class="field-error" id="err-startDate">Please confirm your start date</div>
+        </div>
+
+        <div class="field">
+          <label>Starter Declaration <span class="req">*</span></label>
+          <div class="field-hint" style="margin-bottom:12px">Select whichever applies to you</div>
+          <div class="radio-group">
+
+            <div class="radio-option" onclick="selectDecl(this,'A')">
+              <input type="radio" name="decl" value="A">
+              <div class="radio-dot"></div>
+              <div class="radio-letter">A</div>
+              <div class="radio-text">
+                <strong>First job since 6 April</strong>
+                <p>This is my first job since last 6 April and I have not been receiving a State Pension, JSA, ESA or other taxable benefit</p>
+              </div>
+            </div>
+
+            <div class="radio-option" onclick="selectDecl(this,'B')">
+              <input type="radio" name="decl" value="B">
+              <div class="radio-dot"></div>
+              <div class="radio-letter">B</div>
+              <div class="radio-text">
+                <strong>Only job but had others since April</strong>
+                <p>This is now my only job but since last 6 April I have had another job, or received JSA, ESA or taxable Incapacity Benefit</p>
+              </div>
+            </div>
+
+            <div class="radio-option" onclick="selectDecl(this,'C')">
+              <input type="radio" name="decl" value="C">
+              <div class="radio-dot"></div>
+              <div class="radio-letter">C</div>
+              <div class="radio-text">
+                <strong>Have another job or pension</strong>
+                <p>I have another job or I am receiving a State or Occupational Pension</p>
+              </div>
+            </div>
+
+          </div>
+          <div class="field-error" id="err-declaration">Please select your starter declaration</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SECTION 4: BANK -->
+    <div class="section">
+      <div class="section-head">
+        <div class="section-icon">🏦</div>
+        <div>
+          <div class="section-title">Bank Details</div>
+          <div class="section-subtitle">Your wages will be paid directly into this account</div>
+        </div>
+      </div>
+      <div class="section-body">
+
+        <div class="field">
+          <label>Bank or Building Society <span class="req">*</span></label>
+          <input type="text" id="bankName" placeholder="e.g. Barclays, HSBC, Nationwide">
+          <div class="field-error" id="err-bankName">Please enter your bank name</div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Sort Code <span class="req">*</span></label>
+            <input type="text" id="sortCode" placeholder="XX-XX-XX" maxlength="8" oninput="fmtSort(this)">
+            <div class="field-error" id="err-sortCode">Please enter a valid sort code</div>
+          </div>
+          <div class="field">
+            <label>Account Number <span class="req">*</span></label>
+            <input type="text" id="accountNumber" placeholder="8 digits" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'')">
+            <div class="field-error" id="err-accountNumber">Please enter your 8-digit account number</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Account Holder Name <span class="req">*</span></label>
+          <input type="text" id="accountName" placeholder="Name as shown on your account">
+          <div class="field-error" id="err-accountName">Please enter the account holder name</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SUBMIT -->
+    <button class="submit-btn" id="submitBtn" onclick="submitForm()">
+      <span class="btn-text">Submit My Details</span>
+      <span class="btn-spin"><span class="spin-ring"></span> Sending securely…</span>
+    </button>
+    <p class="submit-note">🔒 Submitted securely over HTTPS — used only for payroll purposes</p>
+
+  </div><!-- /formContent -->
+</div><!-- /form-wrap -->
+
+<script>
+// ─────────────────────────────────────────────────────────
+// CONFIGURATION — update before deploying to GitHub Pages
+// ─────────────────────────────────────────────────────────
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz5zAd4BeeGSzjIDR5e8kbpECHP2VOou9g3UnAB21aPqHNbCVJ7R-gB7RiB2XwbmbJF/exec';
+// e.g. 'https://script.google.com/macros/s/AKfy.../exec'
+
+// ─────────────────────────────────────────────────────────
+var userId   = '';
+var userData = {};
+var selectedDecl = '';
+
+// ── INIT ──────────────────────────────────────────────────
+window.onload = function() {
+  var params = new URLSearchParams(window.location.search);
+  userId = params.get('uid') || '';
+
+  if (!userId) {
+    showFormError('This link doesn\'t look right. Please use the link sent to you in Connecteam.');
+    hide('loadingScreen');
+    show('formContent');
+    return;
+  }
+
+  fetch(APPS_SCRIPT_URL + '?action=getNewStarterData&uid=' + encodeURIComponent(userId))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      populateForm(data);
+      hide('loadingScreen');
+      show('formContent');
+    })
+    .catch(function(err) {
+      console.error('Load error:', err);
+      hide('loadingScreen');
+      show('formContent');
+    });
+};
+
+// ── POPULATE ──────────────────────────────────────────────
+function populateForm(data) {
+  userData = data || {};
+
+  // Show venue prominently
+  var v = data.venueName || 'Kinfold Inns';
+  document.getElementById('venueLabel').textContent = v;
+
+  var prefilled = false;
+
+  function fill(id, val) {
+    if (val) {
+      var el = document.getElementById(id);
+      if (el) { el.value = val; el.classList.add('prefilled'); prefilled = true; }
+    }
+  }
+
+  fill('firstName', data.firstName);
+  fill('lastName',  data.lastName);
+  fill('email',     data.email);
+  fill('phone',     data.phone);
+  fill('dob',       toISODate(data.dob));
+  fill('startDate', toISODate(data.startDate));
+  fill('address1',  data.address1);
+  fill('address2',  data.address2);
+  fill('city',      data.city);
+  fill('postcode',  data.postcode);
+  fill('niNumber',  data.niNumber);
+
+  if (data.gender) {
+    document.getElementById('gender').value = data.gender;
+    prefilled = true;
+  }
+
+  if (prefilled) show('prefillNotice');
+  observeProgress();
+}
+
+// ── HELPERS ───────────────────────────────────────────────
+function toISODate(d) {
+  if (!d) return '';
+  var s = String(d);
+  var p = s.split('/');
+  if (p.length === 3) return p[2] + '-' + pad(p[1]) + '-' + pad(p[0]);
+  if (s.match(/^\d{4}-\d{2}-\d{2}/)) return s.slice(0, 10);
+  return '';
+}
+
+function fromISODate(d) {
+  if (!d) return '';
+  var p = d.split('-');
+  if (p.length === 3) return pad(p[2]) + '/' + pad(p[1]) + '/' + p[0];
+  return d;
+}
+
+function pad(n) { return String(n).padStart(2,'0'); }
+function show(id) { var e = document.getElementById(id); if (e) e.style.display = 'block'; }
+function hide(id) { var e = document.getElementById(id); if (e) e.style.display = 'none'; }
+function get(id) { return (document.getElementById(id).value || '').trim(); }
+
+function fmtSort(el) {
+  var v = el.value.replace(/\D/g,'').slice(0,6);
+  if (v.length > 4) v = v.slice(0,2)+'-'+v.slice(2,4)+'-'+v.slice(4);
+  else if (v.length > 2) v = v.slice(0,2)+'-'+v.slice(2);
+  el.value = v;
+}
+
+// ── DECLARATION ───────────────────────────────────────────
+function selectDecl(el, val) {
+  document.querySelectorAll('.radio-option').forEach(function(o) { o.classList.remove('selected'); });
+  el.classList.add('selected');
+  el.querySelector('input').checked = true;
+  selectedDecl = val;
+  clearErr('declaration');
+}
+
+// ── PROGRESS ──────────────────────────────────────────────
+function observeProgress() {
+  var sections = document.querySelectorAll('.section');
+  function update() {
+    var midY = window.scrollY + window.innerHeight * 0.5;
+    var active = 0;
+    sections.forEach(function(s, i) {
+      if (s.getBoundingClientRect().top + window.scrollY < midY) active = i + 1;
+    });
+    [1,2,3,4].forEach(function(n) {
+      var el = document.getElementById('s'+n);
+      el.classList.remove('active','done');
+      if (n < active) el.classList.add('done');
+      else if (n === active) el.classList.add('active');
+    });
+  }
+  window.addEventListener('scroll', update, { passive: true });
+  update();
+}
+
+// ── VALIDATION ────────────────────────────────────────────
+function showErr(id) {
+  var e = document.getElementById('err-'+id);
+  var i = document.getElementById(id);
+  if (e) e.classList.add('show');
+  if (i) i.classList.add('has-error');
+}
+
+function clearErr(id) {
+  var e = document.getElementById('err-'+id);
+  var i = document.getElementById(id);
+  if (e) e.classList.remove('show');
+  if (i) i.classList.remove('has-error');
+}
+
+function validate() {
+  var ok = true;
+  var fields = ['firstName','lastName','email','phone','dob',
+                'address1','city','postcode','niNumber','startDate',
+                'bankName','sortCode','accountNumber','accountName'];
+
+  fields.forEach(function(id) {
+    clearErr(id);
+    var v = get(id);
+    if (!v) { showErr(id); ok = false; }
+    else if (id==='email' && !v.includes('@')) { showErr(id); ok = false; }
+    else if (id==='sortCode' && v.replace(/\D/g,'').length!==6) { showErr(id); ok = false; }
+    else if (id==='accountNumber' && v.length!==8) { showErr(id); ok = false; }
+  });
+
+  clearErr('declaration');
+  if (!selectedDecl) { showErr('declaration'); ok = false; }
+
+  return ok;
+}
+
+// ── SUBMIT ────────────────────────────────────────────────
+function submitForm() {
+  var banner = document.getElementById('errorBanner');
+  banner.classList.remove('show');
+
+  if (!validate()) {
+    var first = document.querySelector('.field-error.show');
+    if (first) first.closest('.field').scrollIntoView({ behavior:'smooth', block:'center' });
+    return;
+  }
+
+  var btn = document.getElementById('submitBtn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  var payload = {
+    action:        'submitNewStarter',
+    connecteamId:  userId,
+    firstName:     get('firstName'),
+    lastName:      get('lastName'),
+    email:         get('email'),
+    phone:         get('phone'),
+    dob:           fromISODate(get('dob')),
+    gender:        get('gender'),
+    address1:      get('address1'),
+    address2:      get('address2'),
+    city:          get('city'),
+    postcode:      get('postcode'),
+    niNumber:      get('niNumber'),
+    startDate:     fromISODate(get('startDate')),
+    declaration:   selectedDecl,
+    bankName:      get('bankName'),
+    sortCode:      get('sortCode'),
+    accountNumber: get('accountNumber'),
+    accountName:   get('accountName'),
+    // Locked fields from Connecteam (not shown to user)
+    venueName:     userData.venueName      || '',
+    employmentType:userData.employmentType || '',
+    department:    userData.department     || '',
+    jobTitle:      userData.title          || '',
+    qualification: userData.qualifications || '',
+  };
+
+  fetch(APPS_SCRIPT_URL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body:    JSON.stringify(payload),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(result) {
+    if (result && result.success) {
+      hide('formContent');
+      show('successScreen');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      banner.textContent = '⚠️ ' + ((result && result.error) || 'Something went wrong. Please try again or contact your manager.');
+      banner.classList.add('show');
+      banner.scrollIntoView({ behavior:'smooth', block:'center' });
+    }
+  })
+  .catch(function(err) {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    banner.textContent = '⚠️ Submission failed. Please check your connection and try again.';
+    banner.classList.add('show');
+    console.error(err);
+  });
+}
+</script>
+</body>
+</html>
