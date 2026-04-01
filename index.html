@@ -236,7 +236,36 @@ window.onload = function() {
   }
 
   fill('email', p.get('email'));
-  fill('startDate', p.get('startDate'));
+  fill('phone', p.get('phone'));
+
+  // Handle start date — could be ISO string or date
+  var startDate = p.get('startDate') || '';
+  if (startDate) {
+    // Convert ISO datetime to YYYY-MM-DD for date input
+    if (startDate.includes('T')) startDate = startDate.split('T')[0];
+    var parsed = startDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (parsed) fill('startDate', parsed[0]);
+  }
+
+  // Handle DOB — could be ISO, dd/mm/yyyy, or Date string
+  var dob = p.get('dob') || '';
+  if (dob) {
+    if (dob.includes('T')) dob = dob.split('T')[0];
+    var dobParsed = dob.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (dobParsed) fill('dob', dobParsed[0]);
+    else {
+      // Try dd/mm/yyyy
+      var parts2 = dob.split('/');
+      if (parts2.length === 3) fill('dob', parts2[2] + '-' + parts2[1].padStart(2,'0') + '-' + parts2[0].padStart(2,'0'));
+    }
+  }
+
+  // Gender
+  var gender = p.get('gender') || '';
+  if (gender) {
+    var gEl = document.getElementById('gender');
+    if (gEl) { gEl.value = gender; prefilled = true; }
+  }
 
   if (prefilled) document.getElementById('prefillNotice').style.display = '';
 
