@@ -140,7 +140,7 @@ input.has-error, select.has-error { border-color: var(--error) !important; }
           <div class="field"><label>Last Name <span class="req">*</span></label><input type="text" id="lastName" placeholder="Last name"><div class="field-error" id="err-lastName">Please enter your last name</div></div>
         </div>
         <div class="field"><label>Personal Email <span class="req">*</span></label><input type="email" id="email" placeholder="your@email.com"><div class="field-hint">This is where your payslips will be sent</div><div class="field-error" id="err-email">Please enter a valid email address</div></div>
-        <div class="field"><label>Mobile Number <span class="req">*</span></label><input type="tel" id="phone" placeholder="+44 7700 000000"><div class="field-error" id="err-phone">Please enter your mobile number</div></div>
+        <div class="field"><label>Mobile Number <span class="req">*</span></label><input type="tel" id="phone" placeholder="07700 900000"><div class="field-hint">UK mobile, 11 digits starting with 07</div><div class="field-error" id="err-phone">Please enter a valid UK mobile number (07xxxxxxxxx)</div></div>
         <div class="field-row">
           <div class="field"><label>Date of Birth <span class="req">*</span></label><input type="date" id="dob"><div class="field-error" id="err-dob">Please enter your date of birth</div></div>
           <div class="field"><label>Gender <span class="opt">optional</span></label><div class="select-wrap"><select id="gender"><option value="">Prefer not to say</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div></div>
@@ -165,7 +165,7 @@ input.has-error, select.has-error { border-color: var(--error) !important; }
     <div class="section">
       <div class="section-head"><div class="section-icon">📋</div><div><div class="section-title">Payroll Details</div><div class="section-subtitle">Needed to register you on our payroll system</div></div></div>
       <div class="section-body">
-        <div class="field"><label>National Insurance Number <span class="req">*</span></label><input type="text" id="niNumber" placeholder="e.g. AB 12 34 56 C" maxlength="13" oninput="this.value=this.value.toUpperCase()"><div class="field-hint">Found on your NI card, payslip, or HMRC letters</div><div class="field-error" id="err-niNumber">Please enter your NI number</div></div>
+        <div class="field"><label>National Insurance Number <span class="req">*</span></label><input type="text" id="niNumber" placeholder="e.g. AB 12 34 56 C" maxlength="13" oninput="this.value=this.value.toUpperCase()"><div class="field-hint">Found on your NI card, payslip, or HMRC letters. If you don't have one, please message your manager.</div><div class="field-error" id="err-niNumber">Please enter a valid NI number (e.g. AB123456C). If you don't have one, message your manager.</div></div>
         <div class="field"><label>Start Date <span class="req">*</span></label><input type="date" id="startDate"><div class="field-error" id="err-startDate">Please confirm your start date</div></div>
         <div class="field">
           <label>Starter Declaration <span class="req">*</span></label>
@@ -184,7 +184,7 @@ input.has-error, select.has-error { border-color: var(--error) !important; }
     <div class="section">
       <div class="section-head"><div class="section-icon">🏦</div><div><div class="section-title">Bank Details</div><div class="section-subtitle">Your wages will be paid directly into this account</div></div></div>
       <div class="section-body">
-        <div class="field"><label>Bank or Building Society <span class="req">*</span></label><input type="text" id="bankName" placeholder="e.g. Barclays, HSBC, Nationwide"><div class="field-error" id="err-bankName">Please enter your bank name</div></div>
+        <div class="field"><label>Bank or Building Society <span class="req">*</span></label><input type="text" id="bankName" placeholder="e.g. Barclays, HSBC, Nationwide"><div class="field-error" id="err-bankName">Please enter your bank or building society name</div></div>
         <div class="field-row">
           <div class="field"><label>Sort Code <span class="req">*</span></label><input type="text" id="sortCode" placeholder="XX-XX-XX" maxlength="8" oninput="fmtSort(this)"><div class="field-error" id="err-sortCode">Please enter a valid sort code</div></div>
           <div class="field"><label>Account Number <span class="req">*</span></label><input type="text" id="accountNumber" placeholder="8 digits" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'')"><div class="field-error" id="err-accountNumber">Please enter your 8-digit account number</div></div>
@@ -343,9 +343,27 @@ function validate() {
     clearErr(id);
     var v = get(id);
     if (!v) { showErr(id); ok = false; }
-    else if (id==='email' && !v.includes('@')) { showErr(id); ok = false; }
+    // Email — proper format check (not just "@")
+    else if (id==='email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { showErr(id); ok = false; }
+    // Phone — UK mobile (07xxxxxxxxx) or +44 7xxxxxxxxx, must be 11 digits after normalising
+    else if (id==='phone') {
+      var digits = v.replace(/\D/g, '');
+      if (digits.indexOf('44') === 0 && digits.length === 12) digits = '0' + digits.substring(2);
+      if (digits.length !== 11 || digits.charAt(0) !== '0') { showErr(id); ok = false; }
+    }
+    // Sort code — 6 digits after stripping dashes/spaces
     else if (id==='sortCode' && v.replace(/\D/g,'').length!==6) { showErr(id); ok = false; }
-    else if (id==='accountNumber' && v.length!==8) { showErr(id); ok = false; }
+    // Account number — 8 digits, strip non-digits first (was the bug — accepted "1234 5678" as 9 chars)
+    else if (id==='accountNumber' && v.replace(/\D/g,'').length!==8) { showErr(id); ok = false; }
+    // NI Number — UK format AB123456C (with optional spaces). Rejects "NA", "N/A", etc.
+    else if (id==='niNumber') {
+      var ni = v.replace(/\s/g,'').toUpperCase();
+      if (!/^[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z]\d{6}[A-D]$/.test(ni)) { showErr(id); ok = false; }
+    }
+    // Bank name — must contain at least 2 letters (rejects dates, numbers, single chars)
+    else if (id==='bankName' && (v.replace(/[^A-Za-z]/g,'').length < 2)) { showErr(id); ok = false; }
+    // Account name — must contain at least 2 letters
+    else if (id==='accountName' && (v.replace(/[^A-Za-z]/g,'').length < 2)) { showErr(id); ok = false; }
   });
   clearErr('declaration');
   if (!selectedDecl) { showErr('declaration'); ok = false; }
@@ -372,13 +390,20 @@ function submitForm() {
   if (get('address2')) address += ', ' + get('address2');
   address += ', ' + get('city') + ' ' + get('postcode');
 
+  // Normalise phone before sending — strip spaces/punctuation, +44 → 0, cap at 11 digits
+  var phoneNormalised = get('phone').replace(/\D/g, '');
+  if (phoneNormalised.indexOf('44') === 0 && phoneNormalised.length === 12) {
+    phoneNormalised = '0' + phoneNormalised.substring(2);
+  }
+  if (phoneNormalised.length > 11) phoneNormalised = phoneNormalised.substring(0, 11);
+
   var payload = {
     formType: 'onboarding',
     connecteamId: hidden.connecteamId || connecteamId,
-    email: get('email'),
-    niNumber: get('niNumber'),
-    sortCode: get('sortCode'),
-    accountNumber: get('accountNumber'),
+    email: get('email').trim().toLowerCase(),
+    niNumber: get('niNumber').replace(/\s/g,'').toUpperCase(),
+    sortCode: get('sortCode').replace(/\D/g,''),
+    accountNumber: get('accountNumber').replace(/\D/g,''),
     address: address,
     dob: fromISODate(get('dob')),
     gender: get('gender'),
@@ -386,7 +411,7 @@ function submitForm() {
     // Additional fields for completeness
     firstName: get('firstName'),
     lastName: get('lastName'),
-    phone: get('phone'),
+    phone: phoneNormalised,
     bankName: get('bankName'),
     accountName: get('accountName'),
     startDate: fromISODate(get('startDate')),
