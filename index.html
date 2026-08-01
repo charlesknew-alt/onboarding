@@ -142,7 +142,7 @@ input.has-error, select.has-error { border-color: var(--error) !important; }
         <div class="field"><label>Personal Email <span class="req">*</span></label><input type="email" id="email" placeholder="your@email.com"><div class="field-hint">This is where your payslips will be sent</div><div class="field-error" id="err-email">Please enter a valid email address</div></div>
         <div class="field"><label>Mobile Number <span class="req">*</span></label><input type="tel" id="phone" placeholder="07700 900000"><div class="field-hint">UK mobile, 11 digits starting with 07</div><div class="field-error" id="err-phone">Please enter a valid UK mobile number (07xxxxxxxxx)</div></div>
         <div class="field-row">
-          <div class="field"><label>Date of Birth <span class="req">*</span></label><input type="date" id="dob"><div class="field-error" id="err-dob">Please enter your date of birth</div></div>
+          <div class="field"><label>Date of Birth <span class="req">*</span></label><input type="date" id="dob" onchange="updateNIRequirement()"><div class="field-error" id="err-dob">Please enter your date of birth</div></div>
           <div class="field"><label>Gender <span class="opt">optional</span></label><div class="select-wrap"><select id="gender"><option value="">Prefer not to say</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div></div>
         </div>
       </div>
@@ -165,7 +165,7 @@ input.has-error, select.has-error { border-color: var(--error) !important; }
     <div class="section">
       <div class="section-head"><div class="section-icon">📋</div><div><div class="section-title">Payroll Details</div><div class="section-subtitle">Needed to register you on our payroll system</div></div></div>
       <div class="section-body">
-        <div class="field"><label>National Insurance Number <span class="req">*</span></label><input type="text" id="niNumber" placeholder="e.g. AB 12 34 56 C" maxlength="13" oninput="this.value=this.value.toUpperCase()"><div class="field-hint">Found on your NI card, payslip, or HMRC letters. If you don't have one, please message your manager.</div><div class="field-error" id="err-niNumber">Please enter a valid NI number (e.g. AB123456C). If you don't have one, message your manager.</div></div>
+        <div class="field"><label>National Insurance Number <span class="req" id="niReqStar">*</span></label><input type="text" id="niNumber" placeholder="e.g. AB 12 34 56 C" maxlength="13" oninput="this.value=this.value.toUpperCase()"><div class="field-hint" id="niHint">Found on your NI card, payslip, or HMRC letters. If you don't have one, please message your manager.</div><div class="field-error" id="err-niNumber">Please enter a valid NI number (e.g. AB123456C). If you don't have one, message your manager.</div></div>
         <div class="field"><label>Start Date <span class="req">*</span></label><input type="date" id="startDate"><div class="field-error" id="err-startDate">Please confirm your start date</div></div>
         <div class="field">
           <label>Starter Declaration <span class="req">*</span></label>
@@ -283,6 +283,7 @@ window.onload = function() {
   };
 
   observeProgress();
+  updateNIRequirement();
 };
 
 // ── HELPERS ──
@@ -301,6 +302,37 @@ function fromISODate(d) {
   var p = d.split('-');
   if (p.length === 3) return pad(p[2]) + '/' + pad(p[1]) + '/' + p[0];
   return d;
+}
+
+// ── NI / AGE ──
+// Returns true if the person is under 16 today, based on a YYYY-MM-DD DOB string.
+// No/invalid DOB → false, so NI stays required (DOB is itself a required field).
+function isUnder16(dobISO) {
+  if (!dobISO) return false;
+  var d = new Date(dobISO);
+  if (isNaN(d.getTime())) return false;
+  var today = new Date();
+  var age = today.getFullYear() - d.getFullYear();
+  var m = today.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+  return age < 16;
+}
+
+// Under-16s don't have an NI number yet, so make the field optional and update its labelling.
+function updateNIRequirement() {
+  var under16 = isUnder16(get('dob'));
+  var star = document.getElementById('niReqStar');
+  var hint = document.getElementById('niHint');
+  if (star) {
+    if (under16) { star.className = 'opt'; star.textContent = 'optional under 16'; }
+    else { star.className = 'req'; star.textContent = '*'; }
+  }
+  if (hint) {
+    hint.textContent = under16
+      ? "You're under 16, so you may not have one yet — you can leave this blank."
+      : "Found on your NI card, payslip, or HMRC letters. If you don't have one, please message your manager.";
+  }
+  if (under16) clearErr('niNumber');
 }
 
 // ── DECLARATION ──
@@ -338,10 +370,14 @@ function clearErr(id) { var e = document.getElementById('err-'+id); var i = docu
 
 function validate() {
   var ok = true;
+  var under16 = isUnder16(get('dob'));
   var fields = ['firstName','lastName','email','phone','dob','address1','city','postcode','niNumber','startDate','bankName','sortCode','accountNumber','accountName'];
   fields.forEach(function(id) {
     clearErr(id);
     var v = get(id);
+    // NI number is optional for under-16s (they won't have one yet). If left blank, skip it.
+    // If an under-16 does type something, it still falls through to the format check below.
+    if (id==='niNumber' && under16 && !v) { return; }
     if (!v) { showErr(id); ok = false; }
     // Email — proper format check (not just "@")
     else if (id==='email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { showErr(id); ok = false; }
