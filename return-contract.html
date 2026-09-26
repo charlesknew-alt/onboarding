@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Return signed contract — Kinfold Inns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --gold: #B9924E; --gold-lt: #D4AB6A; --dark: #3B3632; --dark2: #2A2420;
+  --cream: #F8F4EE; --warm: #EDE7DE; --border: #DDD5C8; --muted: #8C7E74;
+  --white: #FFFFFF; --error: #C0392B; --success: #2D6A4F; --radius: 12px;
+}
+body {
+  font-family: 'Jost', sans-serif;
+  background: var(--cream);
+  color: var(--dark);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+.hero {
+  background: var(--dark2);
+  padding: 36px 24px 32px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 120%, rgba(185,146,78,0.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  margin: 0 auto 14px;
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+.hero-wordmark {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gold);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  position: relative;
+  z-index: 1;
+}
+.hero-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(28px, 7vw, 40px);
+  font-weight: 400;
+  color: var(--white);
+  line-height: 1.15;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
+}
+.hero-title em { font-style: italic; color: var(--gold-lt); }
+.venue-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(185,146,78,0.15);
+  border: 1px solid rgba(185,146,78,0.35);
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gold-lt);
+  letter-spacing: 0.3px;
+  position: relative;
+  z-index: 1;
+}
+.venue-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex-shrink: 0;
+}
+.wrap { max-width: 480px; margin: 0 auto; padding: 28px 18px 60px; }
+.card {
+  background: var(--white);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 22px 20px;
+  margin-bottom: 16px;
+  animation: fadeUp 0.4s ease both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 500;
+  margin-bottom: 10px;
+  color: var(--dark);
+}
+p {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+  font-weight: 300;
+  margin-bottom: 12px;
+}
+p:last-child { margin-bottom: 0; }
+.note {
+  font-size: 13px;
+  color: var(--dark);
+  background: var(--cream);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 14px 0 0;
+  line-height: 1.5;
+}
+label.pick {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+input[type=file] {
+  width: 100%;
+  font-family: 'Jost', sans-serif;
+  font-size: 14px;
+  margin-bottom: 16px;
+  color: var(--dark);
+}
+.submit-btn {
+  width: 100%;
+  padding: 16px;
+  background: var(--gold);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-family: 'Jost', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.submit-btn:hover:not(:disabled) {
+  background: #a07d3e;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(185,146,78,0.35);
+}
+.submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.submit-btn.loading .btn-text { display: none; }
+.submit-btn.loading .btn-spin { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.btn-spin { display: none; }
+.spin-ring {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.status {
+  font-size: 13px;
+  color: var(--muted);
+  min-height: 1.2em;
+  margin-top: 12px;
+  text-align: center;
+  font-weight: 300;
+}
+.error-banner {
+  display: none;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--error);
+  font-weight: 500;
+}
+.error-banner.show { display: block; }
+.success-screen {
+  display: none;
+  text-align: center;
+  padding: 28px 8px 8px;
+  animation: fadeUp 0.5s ease;
+}
+.success-screen.show { display: block; }
+.success-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: rgba(45,106,79,0.1);
+  border: 2px solid rgba(45,106,79,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  color: var(--success);
+  margin: 0 auto 22px;
+}
+.success-icon.warn {
+  background: rgba(192,57,43,0.08);
+  border-color: rgba(192,57,43,0.25);
+  color: var(--error);
+}
+.success-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 30px;
+  font-weight: 500;
+  color: var(--dark);
+  margin-bottom: 12px;
+}
+.success-body {
+  font-size: 15px;
+  color: var(--muted);
+  font-weight: 300;
+  line-height: 1.65;
+  max-width: 340px;
+  margin: 0 auto;
+}
+.loading-meta {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+  font-weight: 300;
+}
+.foot {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 10px;
+  font-weight: 300;
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <img class="hero-logo" src="images/kinfold-logo.png" alt="Kinfold Inns" width="72" height="72">
+  <div class="hero-wordmark">KINFOLD INNS</div>
+  <h1 class="hero-title">Return your<br>signed <em>contract</em></h1>
+  <div class="venue-banner" id="venueBanner" style="display:none">
+    <span class="venue-dot"></span><span id="venueLabel">Kinfold Inns</span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="loading-meta" id="loadingMeta">Checking your upload link…</div>
+
+  <div id="errorBlock" style="display:none">
+    <div class="card">
+      <h2>Upload link unavailable</h2>
+      <div class="error-banner show" id="linkError"></div>
+      <p>Ask your manager to re-send your contract email — that creates a fresh upload link.</p>
+    </div>
+  </div>
+
+  <div id="formContent" style="display:none">
+    <div class="card">
+      <h2 id="greeting">Hi there</h2>
+      <p id="intro">Once you&rsquo;ve e-signed (Adobe Fill &amp; Sign, print, or similar), save the PDF on your phone or computer and upload it here.</p>
+      <div class="note" id="alreadyNote" style="display:none">
+        We already have a signed file on record. You can upload again if you need to add another signed PDF (for example a companion document).
+      </div>
+      <div class="note">You can select more than one PDF if you signed the contract and companion documents separately.</div>
+    </div>
+
+    <div class="card" id="formBlock">
+      <div class="error-banner" id="errorBanner"></div>
+      <label class="pick" for="files">Choose signed PDF file(s)</label>
+      <input id="files" type="file" accept="application/pdf,.pdf" multiple>
+      <button type="button" class="submit-btn" id="submitBtn" onclick="uploadSigned()">
+        <span class="btn-text">Upload signed contract</span>
+        <span class="btn-spin"><span class="spin-ring"></span> Uploading and checking…</span>
+      </button>
+      <div class="status" id="status"></div>
+      <p class="foot">Submitted securely over HTTPS — used only for your employment records</p>
+    </div>
+
+    <div class="success-screen" id="successScreen">
+      <div class="success-icon" id="successIcon">✓</div>
+      <div class="success-title" id="successTitle">Thanks</div>
+      <p class="success-body" id="successBody"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+// Same Staff Hub web app as the payroll onboarding form (API only — this page is on GitHub Pages).
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwcE86RmdBYqgYESAjENcMmrBDW4UZjg9NnpSOnYxnSdwdc1IoRmJUgH900qnEp_ov7/exec';
+var TOKEN = '';
+var MAX_BYTES = 12 * 1024 * 1024;
+
+window.onload = function() {
+  var p = new URLSearchParams(window.location.search);
+  TOKEN = (p.get('token') || '').trim();
+  if (!TOKEN || TOKEN.length < 16) {
+    showLinkError('This upload link is invalid or has expired. Ask your manager to re-send your contract email.');
+    return;
+  }
+  fetch(APPS_SCRIPT_URL + '?action=returnContractMeta&token=' + encodeURIComponent(TOKEN), {
+    method: 'GET',
+    redirect: 'follow'
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(meta) {
+    document.getElementById('loadingMeta').style.display = 'none';
+    if (!meta || !meta.ok) {
+      showLinkError((meta && meta.error) || 'This upload link is invalid or has expired.');
+      return;
+    }
+    document.getElementById('formContent').style.display = 'block';
+    var first = meta.firstName || 'there';
+    document.getElementById('greeting').textContent = 'Hi ' + first;
+    var venue = meta.venueName || 'Kinfold Inns';
+    document.getElementById('venueLabel').textContent = venue;
+    document.getElementById('venueBanner').style.display = 'inline-flex';
+    document.getElementById('intro').innerHTML =
+      'Once you&rsquo;ve e-signed (Adobe Fill &amp; Sign, print, or similar), save the PDF on your phone or computer and upload it here for <strong style="color:#3B3632;font-weight:500">' +
+      escapeHtml(venue) + '</strong>.';
+    if (meta.alreadyFiled) {
+      document.getElementById('alreadyNote').style.display = 'block';
+    }
+  })
+  .catch(function(err) {
+    console.error(err);
+    showLinkError('Could not verify this link. Check your connection and try again, or ask your manager to re-send the email.');
+  });
+};
+
+function showLinkError(msg) {
+  document.getElementById('loadingMeta').style.display = 'none';
+  document.getElementById('errorBlock').style.display = 'block';
+  document.getElementById('linkError').textContent = msg;
+}
+
+function escapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function setStatus(t) {
+  document.getElementById('status').textContent = t || '';
+}
+
+function readFile(file) {
+  return new Promise(function(resolve, reject) {
+    var r = new FileReader();
+    r.onload = function() {
+      var s = String(r.result || '');
+      var i = s.indexOf(',');
+      resolve({
+        name: file.name,
+        mimeType: file.type || 'application/pdf',
+        base64: i >= 0 ? s.substring(i + 1) : s
+      });
+    };
+    r.onerror = function() { reject(new Error('Could not read ' + file.name)); };
+    r.readAsDataURL(file);
+  });
+}
+
+function uploadSigned() {
+  var banner = document.getElementById('errorBanner');
+  banner.classList.remove('show');
+  var input = document.getElementById('files');
+  var btn = document.getElementById('submitBtn');
+  var list = input && input.files ? Array.prototype.slice.call(input.files) : [];
+  if (!list.length) {
+    setStatus('Choose at least one PDF first.');
+    return;
+  }
+  for (var i = 0; i < list.length; i++) {
+    var n = (list[i].name || '').toLowerCase();
+    var t = (list[i].type || '').toLowerCase();
+    if (t && t.indexOf('pdf') < 0 && n.slice(-4) !== '.pdf') {
+      setStatus('Please upload PDF files only.');
+      return;
+    }
+    if (!list[i].size) {
+      setStatus('That file is empty (0 bytes). Save/export as PDF and try again.');
+      return;
+    }
+    if (list[i].size > MAX_BYTES) {
+      setStatus('Each file must be under 12 MB.');
+      return;
+    }
+  }
+
+  btn.classList.add('loading');
+  btn.disabled = true;
+  setStatus('');
+
+  Promise.all(list.map(readFile))
+    .then(function(files) {
+      // text/plain avoids a CORS preflight against Apps Script (same as payroll form).
+      return fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          formType: 'signed-contract-upload',
+          token: TOKEN,
+          files: files
+        })
+      });
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (!res || res.error || res.success === false) {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+        var msg = (res && (res.error || res.message)) || 'Upload failed. Please try again.';
+        banner.textContent = msg;
+        banner.classList.add('show');
+        setStatus('');
+        return;
+      }
+      document.getElementById('formBlock').style.display = 'none';
+      var screen = document.getElementById('successScreen');
+      var icon = document.getElementById('successIcon');
+      var title = document.getElementById('successTitle');
+      var body = document.getElementById('successBody');
+      var n = res.fileCount || list.length;
+      screen.classList.add('show');
+      if (res.aiPass === false) {
+        icon.classList.add('warn');
+        icon.textContent = '!';
+        title.textContent = 'Please fix and re-upload';
+        body.innerHTML =
+          'We filed ' + n + ' PDF(s), but our check found something missing. Check your email for details and use this same link to upload again.';
+      } else {
+        icon.classList.remove('warn');
+        icon.textContent = '✓';
+        title.textContent = 'All done!';
+        body.innerHTML =
+          'Thanks — we have filed ' + n + ' PDF(s) against your staff record. Your manager will confirm them in Staff Hub.';
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    })
+    .catch(function(err) {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      banner.textContent = (err && err.message) || 'Upload failed. Check your connection and try again.';
+      banner.classList.add('show');
+      console.error(err);
+    });
+}
+</script>
+</body>
+</html>
