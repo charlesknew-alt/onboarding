@@ -5,7 +5,7 @@ Static **GitHub Pages** site for Kinfold staff-facing forms (custom domain `onbo
 | Page | URL | Posts to |
 |---|---|---|
 | Payroll / new-starter form | `/` (`index.html`) | Staff Hub Apps Script `doPost` (`formType: onboarding`) |
-| Signed-contract upload | `/return-contract.html?token=…` | Same web app (`formType: signed-contract-upload`) |
+| Contract e-sign + PDF upload | `/return-contract.html?token=…` | Same web app — primary `signed-contract-esign`, fallback `signed-contract-upload` |
 
 Backend: [kinfoldstaffhub](https://github.com/charlesknew-alt/kinfoldstaffhub) Apps Script (execute as deploying user, anyone anonymous).
 
