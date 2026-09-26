@@ -255,6 +255,10 @@ input[type=file] {
   text-align: center; padding: 40px 20px; color: var(--muted); font-weight: 300;
 }
 .loading-meta p { margin-top: 14px; }
+.loading-meta .loading-hint,
+.preview-loading .loading-hint {
+  margin-top: 8px; font-size: 13px; color: var(--muted); font-weight: 300; opacity: 0.85;
+}
 .progress-track {
   width: min(280px, 80%); height: 6px; margin: 0 auto;
   background: var(--warm); border-radius: 999px; overflow: hidden;
@@ -296,6 +300,7 @@ input[type=file] {
   <div class="loading-meta" id="loadingMeta">
     <div class="progress-track"><div class="progress-bar"></div></div>
     <p id="loadingMetaText">Checking your signing link…</p>
+    <p class="loading-hint">This can take up to 30 seconds — please wait.</p>
   </div>
 
   <div id="errorBlock" style="display:none">
@@ -325,6 +330,7 @@ input[type=file] {
         <div class="preview-loading" id="previewLoading">
           <div class="progress-track wide"><div class="progress-bar"></div></div>
           <p id="previewLoadingText">Loading contract preview…</p>
+          <p class="loading-hint">This can take up to 30 seconds — please wait.</p>
         </div>
         <iframe id="previewFrame" title="Contract preview" sandbox="allow-same-origin"></iframe>
       </div>
