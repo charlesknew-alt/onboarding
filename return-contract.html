@@ -368,7 +368,7 @@ input[type=file] {
 
       <button type="button" class="submit-btn" id="submitBtn" onclick="submitEsign()">
         <span class="btn-text" id="submitBtnText">Submit signed document</span>
-        <span class="btn-spin"><span class="spin-ring"></span> Signing and filing…</span>
+        <span class="btn-spin"><span class="spin-ring"></span> Signing and filing… (up to a minute)</span>
       </button>
       <div class="status" id="status"></div>
       <p class="foot">Submitted securely over HTTPS — used only for your employment records</p>
@@ -412,7 +412,10 @@ input[type=file] {
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwcE86RmdBYqgYESAjENcMmrBDW4UZjg9NnpSOnYxnSdwdc1IoRmJUgH900qnEp_ov7/exec';
 var META_TIMEOUT_MS = 35000;
 var PREVIEW_TIMEOUT_MS = 50000;
-var SUBMIT_TIMEOUT_MS = 90000;
+// Backup only — server now returns after Drive+sheet (AI/emails async).
+var SUBMIT_TIMEOUT_MS = 120000;
+var POLL_INTERVAL_MS = 2500;
+var POLL_MAX_ATTEMPTS = 16; // ~40s after Failed to fetch
 var TOKEN = '';
 var MAX_BYTES = 12 * 1024 * 1024;
 var META = null;
@@ -421,6 +424,7 @@ var CURRENT_DOC_KEY = '';
 var SIGNED_KEYS = {};
 var LAST_DOWNLOAD = null;
 var PREVIEW_CTRL = null;
+var BASELINE_SIGNED_FILE_IDS = '';
 
 var canvas, ctx, drawing = false, hasInk = false, lastX = 0, lastY = 0;
 
@@ -469,6 +473,7 @@ window.onload = function() {
 
     if (meta.fullName) document.getElementById('typedName').value = meta.fullName;
     document.getElementById('signDate').value = meta.signDateDefault || todayUk();
+    BASELINE_SIGNED_FILE_IDS = String(meta.signedFileIds || '').trim();
     if (meta.alreadyFiled) document.getElementById('alreadyNote').style.display = 'block';
 
     if (meta.infoOnlyDocLabels && meta.infoOnlyDocLabels.length) {
@@ -804,6 +809,96 @@ function nextUnsignedKey(afterKey) {
   return '';
 }
 
+function resetSubmitUi(btn) {
+  if (btn) {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+  setStatus('');
+}
+
+function isLikelyNetworkDrop(err) {
+  if (!err) return false;
+  if (err.name === 'AbortError' || err.name === 'TimeoutError') return true;
+  var msg = String(err.message || err || '').toLowerCase();
+  return msg.indexOf('failed to fetch') >= 0 ||
+    msg.indexOf('networkerror') >= 0 ||
+    msg.indexOf('network request failed') >= 0 ||
+    msg.indexOf('load failed') >= 0;
+}
+
+/**
+ * After Failed to fetch / timeout: server may still have filed the PDF.
+ * Poll returnContractMeta until Signed Contract File ID grows or Received At is new.
+ */
+function pollForFiledSuccess(baselineIds, startedMs) {
+  var attempt = 0;
+  function once() {
+    attempt++;
+    setStatus('Checking whether filing completed… (' + attempt + '/' + POLL_MAX_ATTEMPTS + ')');
+    return fetchJson(
+      APPS_SCRIPT_URL + '?action=returnContractMeta&token=' + encodeURIComponent(TOKEN),
+      META_TIMEOUT_MS
+    ).then(function(meta) {
+      if (!meta || !meta.ok) return null;
+      var ids = String(meta.signedFileIds || '').trim();
+      var receivedAt = String(meta.signedReceivedAt || '').trim();
+      var grew = ids && ids !== baselineIds && ids.length >= String(baselineIds || '').length;
+      var recent = false;
+      if (receivedAt) {
+        var t = Date.parse(receivedAt);
+        if (!isNaN(t) && t >= (startedMs - 8000)) recent = true;
+      }
+      if (meta.alreadyFiled && (grew || recent || (!baselineIds && ids))) {
+        BASELINE_SIGNED_FILE_IDS = ids || BASELINE_SIGNED_FILE_IDS;
+        META = meta;
+        return {
+          success: true,
+          fileCount: 1,
+          filedDespiteTimeout: true,
+          aiPass: true,
+          aiInconclusive: true,
+          signedFileIds: ids,
+          signedReceivedAt: receivedAt,
+          status: meta.contractStatus || 'Received — check'
+        };
+      }
+      return null;
+    });
+  }
+  function loop() {
+    return once().then(function(res) {
+      if (res) return res;
+      if (attempt >= POLL_MAX_ATTEMPTS) return null;
+      return new Promise(function(resolve) {
+        setTimeout(resolve, POLL_INTERVAL_MS);
+      }).then(loop);
+    }).catch(function() {
+      if (attempt >= POLL_MAX_ATTEMPTS) return null;
+      return new Promise(function(resolve) {
+        setTimeout(resolve, POLL_INTERVAL_MS);
+      }).then(loop);
+    });
+  }
+  return loop();
+}
+
+function handleEsignSuccess(res, btn) {
+  if (res && res.signedFileIds) {
+    BASELINE_SIGNED_FILE_IDS = String(res.signedFileIds).trim();
+  }
+  SIGNED_KEYS[CURRENT_DOC_KEY] = true;
+  renderDocMenu();
+  var nextKey = nextUnsignedKey(CURRENT_DOC_KEY);
+  if (nextKey) {
+    resetSubmitUi(btn);
+    showPartialSuccess(res, nextKey);
+  } else {
+    resetSubmitUi(btn);
+    showSuccess(res, true);
+  }
+}
+
 function submitEsign() {
   var banner = document.getElementById('errorBanner');
   banner.classList.remove('show');
@@ -825,7 +920,9 @@ function submitEsign() {
   var btn = document.getElementById('submitBtn');
   btn.classList.add('loading');
   btn.disabled = true;
-  setStatus('Signing “' + doc.label + '”…');
+  var baselineIds = BASELINE_SIGNED_FILE_IDS;
+  var startedMs = Date.now();
+  setStatus('Signing “' + doc.label + '”… This can take up to a minute.');
 
   fetchJson(APPS_SCRIPT_URL, SUBMIT_TIMEOUT_MS, {
     method: 'POST',
@@ -844,35 +941,34 @@ function submitEsign() {
   })
   .then(function(res) {
     if (!res || res.error || res.success === false) {
-      btn.classList.remove('loading');
-      btn.disabled = false;
+      resetSubmitUi(btn);
       var msg = (res && (res.error || res.message)) || 'Signing failed. Please try again.';
       banner.textContent = msg;
       banner.classList.add('show');
-      setStatus('');
       return;
     }
-    SIGNED_KEYS[CURRENT_DOC_KEY] = true;
-    renderDocMenu();
-    var nextKey = nextUnsignedKey(CURRENT_DOC_KEY);
-    if (nextKey) {
-      btn.classList.remove('loading');
-      btn.disabled = false;
-      setStatus('');
-      showPartialSuccess(res, nextKey);
-    } else {
-      showSuccess(res, true);
-    }
+    handleEsignSuccess(res, btn);
   })
   .catch(function(err) {
-    btn.classList.remove('loading');
-    btn.disabled = false;
-    var msg = (err && err.name === 'AbortError')
-      ? 'Signing timed out. Check your connection and try again.'
-      : ((err && err.message) || 'Signing failed. Check your connection and try again.');
-    banner.textContent = msg;
-    banner.classList.add('show');
     console.error(err);
+    if (isLikelyNetworkDrop(err)) {
+      setStatus('Connection dropped — checking if your signature was already filed…');
+      return pollForFiledSuccess(baselineIds, startedMs).then(function(recovered) {
+        if (recovered) {
+          banner.classList.remove('show');
+          handleEsignSuccess(recovered, btn);
+          return;
+        }
+        resetSubmitUi(btn);
+        banner.textContent = (err && err.name === 'AbortError')
+          ? 'Signing timed out. If you got a confirmation email, refresh this page — it may already be filed.'
+          : 'Could not confirm filing (Failed to fetch). If you got a confirmation email, refresh this page — it may already be filed. Otherwise try again.';
+        banner.classList.add('show');
+      });
+    }
+    resetSubmitUi(btn);
+    banner.textContent = (err && err.message) || 'Signing failed. Check your connection and try again.';
+    banner.classList.add('show');
   });
 }
 
@@ -923,6 +1019,14 @@ function readFile(file) {
   });
 }
 
+function resetUploadUi(btn) {
+  if (btn) {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+  setUploadStatus('');
+}
+
 function uploadSigned() {
   var banner = document.getElementById('errorBanner');
   banner.classList.remove('show');
@@ -952,7 +1056,9 @@ function uploadSigned() {
 
   btn.classList.add('loading');
   btn.disabled = true;
-  setUploadStatus('');
+  var baselineIds = BASELINE_SIGNED_FILE_IDS;
+  var startedMs = Date.now();
+  setUploadStatus('Uploading… This can take up to a minute.');
 
   Promise.all(list.map(readFile))
     .then(function(files) {
@@ -968,26 +1074,40 @@ function uploadSigned() {
     })
     .then(function(res) {
       if (!res || res.error || res.success === false) {
-        btn.classList.remove('loading');
-        btn.disabled = false;
+        resetUploadUi(btn);
         var msg = (res && (res.error || res.message)) || 'Upload failed. Please try again.';
         banner.textContent = msg;
         banner.classList.add('show');
-        setUploadStatus('');
         return;
       }
+      if (res.signedFileIds) BASELINE_SIGNED_FILE_IDS = String(res.signedFileIds).trim();
+      resetUploadUi(btn);
       // PDF upload may cover all docs — treat as complete
       SIGNABLE.forEach(function(d) { SIGNED_KEYS[d.key] = true; });
       showSuccess(res, false);
     })
     .catch(function(err) {
-      btn.classList.remove('loading');
-      btn.disabled = false;
-      banner.textContent = (err && err.name === 'AbortError')
-        ? 'Upload timed out. Try again.'
-        : ((err && err.message) || 'Upload failed. Check your connection and try again.');
-      banner.classList.add('show');
       console.error(err);
+      if (isLikelyNetworkDrop(err)) {
+        setUploadStatus('Connection dropped — checking if upload already filed…');
+        return pollForFiledSuccess(baselineIds, startedMs).then(function(recovered) {
+          if (recovered) {
+            banner.classList.remove('show');
+            resetUploadUi(btn);
+            SIGNABLE.forEach(function(d) { SIGNED_KEYS[d.key] = true; });
+            showSuccess(recovered, false);
+            return;
+          }
+          resetUploadUi(btn);
+          banner.textContent = (err && err.name === 'AbortError')
+            ? 'Upload timed out. If you got a confirmation email, refresh — it may already be filed.'
+            : 'Could not confirm upload (Failed to fetch). If you got a confirmation email, refresh — it may already be filed. Otherwise try again.';
+          banner.classList.add('show');
+        });
+      }
+      resetUploadUi(btn);
+      banner.textContent = (err && err.message) || 'Upload failed. Check your connection and try again.';
+      banner.classList.add('show');
     });
 }
 
@@ -1015,10 +1135,18 @@ function showSuccess(res, fromEsign) {
     icon.classList.remove('warn');
     icon.textContent = '✓';
     title.textContent = 'All done!';
+    var recoveredNote = res.filedDespiteTimeout
+      ? ' (Your browser lost the reply, but we confirmed the file is on your staff record.)'
+      : '';
     body.innerHTML = fromEsign
       ? 'Thanks — ' + signedCount + ' signed document' + (signedCount === 1 ? '' : 's') +
-        ' filed on your staff record. Download a copy below to keep. Your manager will confirm in Staff Hub.'
-      : 'Thanks — we have filed ' + n + ' PDF(s) against your staff record. Your manager will confirm them in Staff Hub.';
+        ' filed on your staff record.' + recoveredNote +
+        (res.downloadBase64
+          ? ' Download a copy below to keep.'
+          : ' Ask your manager if you need a PDF copy.') +
+        ' Your manager will confirm in Staff Hub.'
+      : 'Thanks — we have filed ' + n + ' PDF(s) against your staff record.' + recoveredNote +
+        ' Your manager will confirm them in Staff Hub.';
   }
 
   if (res.downloadBase64 && res.downloadFilename) {
