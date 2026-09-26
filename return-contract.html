@@ -216,6 +216,17 @@ input[type=file] {
   font-weight: 600; cursor: pointer;
 }
 .secondary-btn:hover { background: #1f1a17; }
+.download-list {
+  display: none; margin-top: 16px; text-align: left;
+}
+.download-list.show { display: block; }
+.download-list-head {
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.6px;
+  margin-bottom: 8px; text-align: center;
+}
+.download-list .secondary-btn { margin-top: 8px; }
+.download-list .secondary-btn:first-of-type { margin-top: 0; }
 .ghost-btn {
   width: 100%; padding: 12px; margin-top: 8px; background: transparent;
   color: var(--dark); border: 1px solid var(--border); border-radius: var(--radius);
@@ -392,8 +403,12 @@ input[type=file] {
 
     <div class="success-screen" id="successScreen">
       <div class="success-icon" id="successIcon">✓</div>
-      <div class="success-title" id="successTitle">Thanks</div>
+      <div class="success-title" id="successTitle">Complete</div>
       <p class="success-body" id="successBody"></p>
+      <div class="download-list" id="downloadList">
+        <div class="download-list-head">Download your signed documents</div>
+        <div id="downloadListBtns"></div>
+      </div>
       <button type="button" class="secondary-btn" id="downloadBtn" style="display:none" onclick="downloadSignedCopy()">
         Download signed copy
       </button>
@@ -422,6 +437,8 @@ var META = null;
 var SIGNABLE = [];
 var CURRENT_DOC_KEY = '';
 var SIGNED_KEYS = {};
+/** @type {Object.<string,{docKey:string,label:string,filename:string,base64:string,mimeType:string}>} */
+var SIGNED_DOWNLOADS = {};
 var LAST_DOWNLOAD = null;
 var PREVIEW_CTRL = null;
 var BASELINE_SIGNED_FILE_IDS = '';
@@ -476,6 +493,10 @@ window.onload = function() {
     BASELINE_SIGNED_FILE_IDS = String(meta.signedFileIds || '').trim();
     if (meta.alreadyFiled) document.getElementById('alreadyNote').style.display = 'block';
 
+    if (meta.signedDocKeys && meta.signedDocKeys.length) {
+      meta.signedDocKeys.forEach(function(k) { SIGNED_KEYS[k] = true; });
+    }
+
     if (meta.infoOnlyDocLabels && meta.infoOnlyDocLabels.length) {
       var infoEl = document.getElementById('infoOnlyNote');
       infoEl.style.display = 'block';
@@ -484,6 +505,12 @@ window.onload = function() {
     }
 
     renderDocMenu();
+
+    if (meta.allSignableDone) {
+      enterCompleteState({ fromEsign: true, fetchDownloads: true });
+      return;
+    }
+
     selectDoc(CURRENT_DOC_KEY, { keepSignature: true, skipMenu: true });
   })
   .catch(function(err) {
@@ -790,7 +817,22 @@ function canvasLooksBlank() {
 
 function getSignaturePngBase64() {
   if (canvasLooksBlank()) return '';
-  var dataUrl = canvas.toDataURL('image/png');
+  // Scale large canvas signatures down before upload so stamped PDF fits the cell.
+  var maxW = 280;
+  var maxH = 72;
+  var src = canvas;
+  var scale = Math.min(1, maxW / canvas.width, maxH / canvas.height);
+  if (scale < 0.999) {
+    var off = document.createElement('canvas');
+    off.width = Math.max(1, Math.round(canvas.width * scale));
+    off.height = Math.max(1, Math.round(canvas.height * scale));
+    var octx = off.getContext('2d');
+    octx.fillStyle = '#ffffff';
+    octx.fillRect(0, 0, off.width, off.height);
+    octx.drawImage(canvas, 0, 0, off.width, off.height);
+    src = off;
+  }
+  var dataUrl = src.toDataURL('image/png');
   var i = dataUrl.indexOf(',');
   return i >= 0 ? dataUrl.substring(i + 1) : dataUrl;
 }
@@ -883,11 +925,145 @@ function pollForFiledSuccess(baselineIds, startedMs) {
   return loop();
 }
 
+function rememberDownloadFromResponse(res, fallbackKey, fallbackLabel) {
+  var items = [];
+  if (res && res.downloads && res.downloads.length) {
+    items = res.downloads;
+  } else if (res && res.downloadBase64 && res.downloadFilename) {
+    items = [{
+      docKey: res.docKey || res.mainDocKey || fallbackKey || '',
+      label: res.downloadLabel || res.docLabel || res.mainDocLabel || fallbackLabel || 'Signed document',
+      filename: res.downloadFilename,
+      mimeType: res.downloadMimeType || 'application/pdf',
+      base64: res.downloadBase64
+    }];
+  }
+  items.forEach(function(item) {
+    if (!item || !item.base64) return;
+    var key = item.docKey || item.filename || ('file-' + Object.keys(SIGNED_DOWNLOADS).length);
+    SIGNED_DOWNLOADS[key] = {
+      docKey: key,
+      label: item.label || key,
+      filename: item.filename || (key + '.pdf'),
+      mimeType: item.mimeType || 'application/pdf',
+      base64: item.base64
+    };
+    LAST_DOWNLOAD = SIGNED_DOWNLOADS[key];
+  });
+}
+
+function signedDownloadList() {
+  var keys = Object.keys(SIGNED_DOWNLOADS);
+  var list = [];
+  var i;
+  // Prefer signable order
+  for (i = 0; i < SIGNABLE.length; i++) {
+    var k = SIGNABLE[i].key;
+    if (SIGNED_DOWNLOADS[k]) list.push(SIGNED_DOWNLOADS[k]);
+  }
+  for (i = 0; i < keys.length; i++) {
+    var already = false;
+    for (var j = 0; j < list.length; j++) {
+      if (list[j].docKey === keys[i]) { already = true; break; }
+    }
+    if (!already) list.push(SIGNED_DOWNLOADS[keys[i]]);
+  }
+  return list;
+}
+
+function renderDownloadList() {
+  var wrap = document.getElementById('downloadList');
+  var btns = document.getElementById('downloadListBtns');
+  var list = signedDownloadList();
+  btns.innerHTML = '';
+  if (!list.length) {
+    wrap.classList.remove('show');
+    document.getElementById('downloadBtn').style.display = 'none';
+    document.getElementById('openPdfBtn').style.display = 'none';
+    return;
+  }
+  wrap.classList.add('show');
+  list.forEach(function(item, idx) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'secondary-btn';
+    b.textContent = 'Download ' + (item.label || item.filename || ('document ' + (idx + 1)));
+    b.onclick = (function(d) {
+      return function() { downloadOneSignedCopy(d); };
+    })(item);
+    btns.appendChild(b);
+  });
+  // Hide legacy single buttons when we have an explicit list
+  document.getElementById('downloadBtn').style.display = 'none';
+  document.getElementById('openPdfBtn').style.display = list.length === 1 ? 'block' : 'none';
+  if (list.length === 1) LAST_DOWNLOAD = list[0];
+}
+
+function hideSigningUi() {
+  document.getElementById('signBlock').style.display = 'none';
+  document.getElementById('fallbackCard').style.display = 'none';
+  document.getElementById('previewCard').style.display = 'none';
+  document.getElementById('partialBanner').classList.remove('show');
+  var menu = document.getElementById('docMenu');
+  if (menu) menu.classList.remove('show');
+  var chip = document.getElementById('docChip');
+  if (chip) chip.style.display = 'none';
+  var already = document.getElementById('alreadyNote');
+  if (already) already.style.display = 'none';
+  var intro = document.getElementById('intro');
+  if (intro) intro.textContent = 'Your signed documents are ready to download.';
+  var heroTitle = document.querySelector('.hero-title');
+  if (heroTitle) heroTitle.innerHTML = 'Signing<br><em>complete</em>';
+}
+
+function enterCompleteState(opts) {
+  opts = opts || {};
+  hideSigningUi();
+  var screen = document.getElementById('successScreen');
+  var icon = document.getElementById('successIcon');
+  var title = document.getElementById('successTitle');
+  var body = document.getElementById('successBody');
+  screen.classList.add('show');
+  icon.classList.remove('warn');
+  icon.textContent = '✓';
+  title.textContent = 'Complete';
+  var n = signedDownloadList().length || Object.keys(SIGNED_KEYS).length || SIGNABLE.length || 1;
+  body.textContent = 'Thanks — ' + n + ' signed document' + (n === 1 ? '' : 's') +
+    ' filed on your staff record. Download your copies below. Your manager will confirm in Staff Hub.';
+  document.getElementById('continueSignBtn').style.display = 'none';
+  renderDownloadList();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  if (opts.fetchDownloads && !signedDownloadList().length) {
+    body.textContent = 'Loading your signed documents…';
+    fetchJson(
+      APPS_SCRIPT_URL + '?action=returnContractDownloads&token=' + encodeURIComponent(TOKEN),
+      SUBMIT_TIMEOUT_MS
+    ).then(function(res) {
+      if (res && res.ok && res.downloads) {
+        res.downloads.forEach(function(item) {
+          rememberDownloadFromResponse({ downloads: [item] }, item.docKey, item.label);
+        });
+      }
+      var count = signedDownloadList().length || Object.keys(SIGNED_KEYS).length || 1;
+      body.textContent = 'Thanks — ' + count + ' signed document' + (count === 1 ? '' : 's') +
+        ' filed on your staff record. Download your copies below. Your manager will confirm in Staff Hub.';
+      renderDownloadList();
+      if (!signedDownloadList().length) {
+        body.textContent = 'Thanks — your signed documents are on your staff record. Ask your manager if you need a PDF copy.';
+      }
+    }).catch(function() {
+      body.textContent = 'Thanks — your signed documents are on your staff record. Ask your manager if you need a PDF copy.';
+    });
+  }
+}
+
 function handleEsignSuccess(res, btn) {
   if (res && res.signedFileIds) {
     BASELINE_SIGNED_FILE_IDS = String(res.signedFileIds).trim();
   }
   SIGNED_KEYS[CURRENT_DOC_KEY] = true;
+  rememberDownloadFromResponse(res, CURRENT_DOC_KEY, currentDoc().label);
   renderDocMenu();
   var nextKey = nextUnsignedKey(CURRENT_DOC_KEY);
   if (nextKey) {
@@ -983,13 +1159,7 @@ function showPartialSuccess(res, nextKey) {
     ' (' + remainingDocs().length + ' left).';
   banner.classList.add('show');
 
-  if (res.downloadBase64 && res.downloadFilename) {
-    LAST_DOWNLOAD = {
-      base64: res.downloadBase64,
-      filename: res.downloadFilename,
-      mimeType: res.downloadMimeType || 'application/pdf'
-    };
-  }
+  rememberDownloadFromResponse(res, CURRENT_DOC_KEY, signedLabel);
 
   selectDoc(nextKey, { keepSignature: true });
   window.scrollTo({ top: document.getElementById('signBlock').offsetTop - 20, behavior: 'smooth' });
@@ -1112,76 +1282,106 @@ function uploadSigned() {
 }
 
 function showSuccess(res, fromEsign) {
-  document.getElementById('signBlock').style.display = 'none';
-  document.getElementById('fallbackCard').style.display = 'none';
-  document.getElementById('previewCard').style.display = 'none';
-  document.getElementById('partialBanner').classList.remove('show');
+  rememberDownloadFromResponse(res, CURRENT_DOC_KEY, currentDoc().label);
 
-  var screen = document.getElementById('successScreen');
-  var icon = document.getElementById('successIcon');
-  var title = document.getElementById('successTitle');
-  var body = document.getElementById('successBody');
-  var n = res.fileCount || 1;
-  var signedCount = Object.keys(SIGNED_KEYS).length || n;
-  screen.classList.add('show');
-
-  if (res.aiPass === false) {
+  if (res && res.aiPass === false) {
+    hideSigningUi();
+    var screen = document.getElementById('successScreen');
+    var icon = document.getElementById('successIcon');
+    var title = document.getElementById('successTitle');
+    var body = document.getElementById('successBody');
+    var n = res.fileCount || 1;
+    screen.classList.add('show');
     icon.classList.add('warn');
     icon.textContent = '!';
     title.textContent = 'Please fix and try again';
     body.innerHTML =
       'We filed ' + n + ' PDF(s), but our check found something missing. Check your email and use this same link to sign or upload again.';
-  } else {
-    icon.classList.remove('warn');
-    icon.textContent = '✓';
-    title.textContent = 'All done!';
-    var recoveredNote = res.filedDespiteTimeout
-      ? ' (Your browser lost the reply, but we confirmed the file is on your staff record.)'
-      : '';
-    body.innerHTML = fromEsign
-      ? 'Thanks — ' + signedCount + ' signed document' + (signedCount === 1 ? '' : 's') +
-        ' filed on your staff record.' + recoveredNote +
-        (res.downloadBase64
-          ? ' Download a copy below to keep.'
-          : ' Ask your manager if you need a PDF copy.') +
-        ' Your manager will confirm in Staff Hub.'
-      : 'Thanks — we have filed ' + n + ' PDF(s) against your staff record.' + recoveredNote +
-        ' Your manager will confirm them in Staff Hub.';
+    document.getElementById('continueSignBtn').style.display = 'none';
+    renderDownloadList();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
   }
 
-  if (res.downloadBase64 && res.downloadFilename) {
-    LAST_DOWNLOAD = {
-      base64: res.downloadBase64,
-      filename: res.downloadFilename,
-      mimeType: res.downloadMimeType || 'application/pdf'
-    };
-    document.getElementById('downloadBtn').style.display = 'block';
-    document.getElementById('openPdfBtn').style.display = 'block';
-  } else {
-    LAST_DOWNLOAD = null;
-    document.getElementById('downloadBtn').style.display = 'none';
-    document.getElementById('openPdfBtn').style.display = 'none';
+  if (fromEsign) {
+    enterCompleteState({ fromEsign: true, fetchDownloads: false });
+    var recoveredNote = res && res.filedDespiteTimeout
+      ? ' (Your browser lost the reply, but we confirmed the file is on your staff record.)'
+      : '';
+    if (recoveredNote) {
+      document.getElementById('successBody').textContent =
+        document.getElementById('successBody').textContent.replace(
+          ' Your manager will confirm in Staff Hub.',
+          recoveredNote + ' Your manager will confirm in Staff Hub.'
+        );
+    }
+    return;
   }
+
+  // PDF upload path
+  hideSigningUi();
+  var screenU = document.getElementById('successScreen');
+  var iconU = document.getElementById('successIcon');
+  var titleU = document.getElementById('successTitle');
+  var bodyU = document.getElementById('successBody');
+  var nU = (res && res.fileCount) || 1;
+  screenU.classList.add('show');
+  iconU.classList.remove('warn');
+  iconU.textContent = '✓';
+  titleU.textContent = 'Complete';
+  var recoveredNoteU = (res && res.filedDespiteTimeout)
+    ? ' (Your browser lost the reply, but we confirmed the file is on your staff record.)'
+    : '';
+  bodyU.textContent = 'Thanks — we have filed ' + nU + ' PDF(s) against your staff record.' +
+    recoveredNoteU + ' Download your copies below. Your manager will confirm them in Staff Hub.';
   document.getElementById('continueSignBtn').style.display = 'none';
+  renderDownloadList();
+  if (!signedDownloadList().length) {
+    bodyU.textContent = 'Thanks — we have filed ' + nU + ' PDF(s) against your staff record.' +
+      recoveredNoteU + ' Loading download links…';
+    fetchJson(
+      APPS_SCRIPT_URL + '?action=returnContractDownloads&token=' + encodeURIComponent(TOKEN),
+      SUBMIT_TIMEOUT_MS
+    ).then(function(dl) {
+      if (dl && dl.ok && dl.downloads) {
+        dl.downloads.forEach(function(item) {
+          rememberDownloadFromResponse({ downloads: [item] }, item.docKey, item.label);
+        });
+      }
+      renderDownloadList();
+      bodyU.textContent = 'Thanks — we have filed ' + nU + ' PDF(s) against your staff record.' +
+        recoveredNoteU +
+        (signedDownloadList().length
+          ? ' Download your copies below. Your manager will confirm them in Staff Hub.'
+          : ' Your manager will confirm them in Staff Hub.');
+    }).catch(function() {
+      bodyU.textContent = 'Thanks — we have filed ' + nU + ' PDF(s) against your staff record.' +
+        recoveredNoteU + ' Your manager will confirm them in Staff Hub.';
+    });
+  }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function buildDownloadBlob() {
-  if (!LAST_DOWNLOAD || !LAST_DOWNLOAD.base64) return null;
-  var raw = LAST_DOWNLOAD.base64;
+function buildDownloadBlobFrom(item) {
+  if (!item || !item.base64) return null;
+  var raw = item.base64;
   var bin = atob(raw);
   var bytes = new Uint8Array(bin.length);
   for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new Blob([bytes], { type: LAST_DOWNLOAD.mimeType || 'application/pdf' });
+  return new Blob([bytes], { type: item.mimeType || 'application/pdf' });
 }
 
-function downloadSignedCopy() {
-  var blob = buildDownloadBlob();
+function buildDownloadBlob() {
+  return buildDownloadBlobFrom(LAST_DOWNLOAD);
+}
+
+function downloadOneSignedCopy(item) {
+  var blob = buildDownloadBlobFrom(item);
   if (!blob) return;
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
-  a.download = LAST_DOWNLOAD.filename || 'signed-contract.pdf';
+  a.download = (item && item.filename) || 'signed-contract.pdf';
   a.rel = 'noopener';
   document.body.appendChild(a);
   a.click();
@@ -1189,6 +1389,10 @@ function downloadSignedCopy() {
     try { document.body.removeChild(a); } catch (e) {}
     URL.revokeObjectURL(url);
   }, 1500);
+}
+
+function downloadSignedCopy() {
+  downloadOneSignedCopy(LAST_DOWNLOAD);
 }
 
 function openSignedCopy() {
