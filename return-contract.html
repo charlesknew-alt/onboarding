@@ -511,6 +511,9 @@ window.onload = function() {
       return;
     }
 
+    // Stale Complete possible if IDs were cleared server-side after a cached open
+    document.getElementById('successScreen').classList.remove('show');
+
     selectDoc(CURRENT_DOC_KEY, { keepSignature: true, skipMenu: true });
   })
   .catch(function(err) {
@@ -1045,13 +1048,24 @@ function enterCompleteState(opts) {
           rememberDownloadFromResponse({ downloads: [item] }, item.docKey, item.label);
         });
       }
+      if (!signedDownloadList().length) {
+        // No surviving employment docs — leave Complete and re-check meta for e-sign UI
+        return fetchJson(
+          APPS_SCRIPT_URL + '?action=returnContractMeta&token=' + encodeURIComponent(TOKEN),
+          META_TIMEOUT_MS
+        ).then(function(fresh) {
+          if (fresh && fresh.ok && !fresh.allSignableDone) {
+            // Server cleared Complete — hard refresh into signing UI
+            location.replace(location.pathname + location.search);
+            return;
+          }
+          body.textContent = 'Thanks — your signed documents are on your staff record. Ask your manager if you need a PDF copy.';
+        });
+      }
       var count = signedDownloadList().length || Object.keys(SIGNED_KEYS).length || 1;
       body.textContent = 'Thanks — ' + count + ' signed document' + (count === 1 ? '' : 's') +
         ' filed on your staff record. Download your copies below. Your manager will confirm in Staff Hub.';
       renderDownloadList();
-      if (!signedDownloadList().length) {
-        body.textContent = 'Thanks — your signed documents are on your staff record. Ask your manager if you need a PDF copy.';
-      }
     }).catch(function() {
       body.textContent = 'Thanks — your signed documents are on your staff record. Ask your manager if you need a PDF copy.';
     });
